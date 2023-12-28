@@ -4,7 +4,6 @@ import com.rest.crud.restcrudexample.exception.DriverNotFoundException;
 import com.rest.crud.restcrudexample.model.Driver;
 import com.rest.crud.restcrudexample.repository.DriverRepository;
 import com.rest.crud.restcrudexample.service.DriverService;
-import com.rest.crud.restcrudexample.util.Patcher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +20,7 @@ import static java.util.Objects.nonNull;
 public class DriverServiceImpl implements DriverService {
 
     private final DriverRepository driverRepository;
+    private final PatcherServiceImpl patcherService;
 
     public List<Driver> findAll() {
         log.info("Find All Drivers");
@@ -46,11 +46,11 @@ public class DriverServiceImpl implements DriverService {
     @Override
     public Driver update(Long id, Driver driver) {
         log.info("Update Driver: {}; by ID: {}", driver, id);
-        Assert.notNull(id, "Driver ID must be provided");
+        Assert.notNull(id, "ID must be provided");
         Assert.notNull(driver, "Driver must be provided");
-        Assert.isTrue(id.equals(driver.getId()), "Driver ID in path must be equals ID in Driver request body");
+        Assert.isTrue(id.equals(driver.getId()), "ID must be equal Driver ID");
 
-        var byId = findById(id);
+        var byId = driverRepository.findById(id);
         if (byId.isEmpty()) {
             throw new DriverNotFoundException(id);
         }
@@ -61,7 +61,7 @@ public class DriverServiceImpl implements DriverService {
     @Override
     public Driver updatePartial(Long id, Driver driver) {
         log.info("Update Partial Driver: {}; by ID: {}", driver, id);
-        Assert.notNull(id, "Driver ID must be provided");
+        Assert.notNull(id, "ID must be provided");
         Assert.notNull(driver, "Driver must be provided");
 
         var byId = findById(id);
@@ -70,11 +70,7 @@ public class DriverServiceImpl implements DriverService {
         }
         var existing = byId.get();
         driver.setId(id);
-        try {
-            Patcher.driverPatcher(existing, driver);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+        patcherService.patchDriver(existing, driver);
 
         return driverRepository.save(existing);
     }
